@@ -24,8 +24,27 @@ const covid19IndiaPortalDbServer = async () => {
 };
 
 covid19IndiaPortalDbServer();
-
-//const authenticationToken = (request,response,next){};
+module.exports = app;
+const authenticationToken = (request, response, next) => {
+  let jwtToken;
+  const authHeader = request.headers["authorization"];
+  if (authHeader !== undefined) {
+    jwtToken = authHeader.split(" ")[1];
+  }
+  if (jwtToken === undefined) {
+    response.status(401);
+    response.send("Invalid JWT Token");
+  } else {
+    jwt.verify(jwtToken, "asdfgh", async (error, payload) => {
+      if (error) {
+        response.status(401);
+        response.send("Invalid JWT Token");
+      } else {
+        next();
+      }
+    });
+  }
+};
 
 //API 1
 
@@ -35,23 +54,23 @@ app.post("/login/", async (request, response) => {
   const dbUser = await db.get(selectUser);
   if (dbUser === undefined) {
     response.status(400);
-    response.send("Invalid User");
+    response.send("Invalid user");
   } else {
     const isPasswordMatched = await bcrypt.compare(password, dbUser.password);
-    if (isPasswordMatched == true) {
+    if (isPasswordMatched === true) {
       const payload = { username: username };
-      const jwtToken = jwt.sign(payload, "vineeth");
+      const jwtToken = jwt.sign(payload, "asdfgh");
       response.send({ jwtToken });
     } else {
       response.status(400);
-      response.send("Invalid Password");
+      response.send("Invalid password");
     }
   }
 });
 
 //API 2
 
-app.get("/states/", async (request, response) => {
+app.get("/states/", authenticationToken, async (request, response) => {
   const getStatesQuery = `select * from state;`;
   const states = await db.all(getStatesQuery);
   const responseSates = states.map((state) => {
@@ -66,7 +85,7 @@ app.get("/states/", async (request, response) => {
 
 //API 3
 
-app.get("/states/:stateId", async (request, response) => {
+app.get("/states/:stateId", authenticationToken, async (request, response) => {
   const { stateId } = request.params;
   const getStateQuery = `select * from state where state_id = ${stateId};`;
   const state = await db.get(getStateQuery);
@@ -83,7 +102,7 @@ app.get("/states/:stateId", async (request, response) => {
 
 //API 4
 
-app.post("/districts/", async (request, response) => {
+app.post("/districts/", authenticationToken, async (request, response) => {
   const { districtName, stateId, cases, cured, active, deaths } = request.body;
   const createDistrictQuery = `insert into district (district_name,state_id,cases,cured,active,deaths)
     values('${districtName}',${stateId},'${cases}','${cured}','${active}','${deaths}');`;
@@ -93,56 +112,79 @@ app.post("/districts/", async (request, response) => {
 
 //API 5
 
-app.get("/districts/:districtId/", async (request, response) => {
-  const { districtId } = request.params;
-  const getDistrictQuery = `select * from district where district_id =${districtId};`;
-  const district = await db.get(getDistrictQuery);
-  const responseDistrict = (district) => {
-    return {
-      districtId: district.district_id,
-      districtName: district.district_name,
-      stateId: district.state_id,
-      cases: district.cases,
-      cured: district.cured,
-      active: district.active,
-      deaths: district.deaths,
+app.get(
+  "/districts/:districtId/",
+  authenticationToken,
+  async (request, response) => {
+    const { districtId } = request.params;
+    const getDistrictQuery = `select * from district where district_id =${districtId};`;
+    const district = await db.get(getDistrictQuery);
+    const responseDistrict = (district) => {
+      return {
+        districtId: district.district_id,
+        districtName: district.district_name,
+        stateId: district.state_id,
+        cases: district.cases,
+        cured: district.cured,
+        active: district.active,
+        deaths: district.deaths,
+      };
     };
-  };
-  const result = responseDistrict(district);
-  response.send(result);
-});
+    const result = responseDistrict(district);
+    response.send(result);
+  }
+);
 
 //API 6
 
-app.delete("/districts/:districtId/", async (request, response) => {
-  const { districtId } = request.params;
-  const deleteDistrictQuery = `delete from district where district_id = ${districtId};`;
-  await db.run(deleteDistrictQuery);
-  response.send("District Removed");
-});
+app.delete(
+  "/districts/:districtId/",
+  authenticationToken,
+  async (request, response) => {
+    const { districtId } = request.params;
+    const deleteDistrictQuery = `delete from district where district_id = ${districtId};`;
+    await db.run(deleteDistrictQuery);
+    response.send("District Removed");
+  }
+);
 
 //API 7
 
-app.put("/districts/:districtId/", async (request, response) => {
-  const { districtName, stateId, cases, cured, active, deaths } = request.body;
-  const updateDistrictQuery = `update district set district_name = '${districtName}',
+app.put(
+  "/districts/:districtId/",
+  authenticationToken,
+  async (request, response) => {
+    const {
+      districtName,
+      stateId,
+      cases,
+      cured,
+      active,
+      deaths,
+    } = request.body;
+    const updateDistrictQuery = `update district set district_name = '${districtName}',
     state_id = ${stateId},
     cases = '${cases}',
     cured = '${cured}',
     active = '${active}',
     deaths = '${deaths}';`;
-  await db.run(updateDistrictQuery);
-  response.send("District Details Updated");
-});
+    await db.run(updateDistrictQuery);
+    response.send("District Details Updated");
+  }
+);
 
 //API 8
 
-app.get("/states/:stateId/stats/", async (request, response) => {
-  const { stateId } = request.params;
-  const getStatistics = `select sum(cases) as totalCases,
+app.get(
+  "/states/:stateId/stats/",
+  authenticationToken,
+  async (request, response) => {
+    const { stateId } = request.params;
+    const getStatistics = `select sum(cases) as totalCases,
     sum(cured) as totalCured,
     sum(active) as totalActive,
     sum(deaths) as totalDeaths from district where state_id = ${stateId};`;
-  const statistics = await db.get(getStatistics);
-  response.send(statistics);
-});
+    const statistics = await db.get(getStatistics);
+    response.send(statistics);
+  }
+);

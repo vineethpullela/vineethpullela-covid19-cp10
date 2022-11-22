@@ -1,4 +1,18 @@
+POST http://localhost:3006/login/
+Content-Type: application/json
+
+
+{
+  "username": "christopher_phillips",
+  "password": "christy@123"
+}
+###
+
+
+
 GET http://localhost:3006/states/
+
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6ImNocmlzdG9waGVyX3BoaWxsaXBzIiwiaWF0IjoxNjY5MTEwNTAwfQ.QI00VBLrRhorv65LTk673S6n1g73rKKH8fZ7CIw49Dg
 ###
 
 GET http://localhost:3006/states/8
